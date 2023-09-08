@@ -3,6 +3,8 @@ var cors = require('cors')
 require('dotenv').config()
 const app = express()
 const jwt = require('jsonwebtoken');
+const payment_token = process.env.PAYMENT_token;
+const stripe = require("stripe")(payment_token);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -62,15 +64,16 @@ async function run() {
         const reviewCollection = client.db("bistro-boss").collection("reviews");
         const cartCollection = client.db("bistro-boss").collection("carts");
         const bookingCollection = client.db("bistro-boss").collection("bookings");
+        const paymentCollection = client.db("bistro-boss").collection("payments");
         // menu related apis
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray()
             res.send(result)
         })
         // reviews related apis
-        app.get('/reviews/:email', async (req, res) => {
-            const userEmail=req.params.email
-            const query={email:userEmail}
+        app.get('/reviews', async (req, res) => {
+            const userEmail = req.query.email
+            const query = { email: userEmail }
             const result = await reviewCollection.find(query).toArray()
             res.send(result)
         })
@@ -85,8 +88,8 @@ async function run() {
             const result = await bookingCollection.insertOne(bookings)
             res.send(result)
         })
-        app.get('/booking',verifyJWT,  async (req, res) => {
-            const email=req.query.email;
+        app.get('/booking', verifyJWT, async (req, res) => {
+            const email = req.query.email;
             const query = { email: email }
             const result = await bookingCollection.find(query).toArray()
             res.send(result)
@@ -126,6 +129,38 @@ async function run() {
             const result = await cartCollection.deleteOne(query)
             res.send(result);
         })
+        // payment related API's:
+        app.get('/payments',  async (req, res) => {
+            const email = req.query.email;
+            const query={email:email}
+            const result =await paymentCollection.find(query).toArray()
+            res.send(result)
+        })
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            // console.log(price);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: price * 100,
+                currency: 'usd',
+                "payment_method_types": [
+                    "card"
+                ],
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            })
+
+        })
+
+        app.post('/payments', verifyJWT, async (req, res) => {
+            const { payments } = req.body;
+            // console.log(payments);
+            const result = await paymentCollection.insertOne(payments)
+            const query = { _id: { $in: payments.menuCartId.map(id => new ObjectId(id)) } };
+            const deleteResult = await cartCollection.deleteMany(query)
+            res.send({ result, deleteResult })
+        })
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
