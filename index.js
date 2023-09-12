@@ -137,14 +137,39 @@ async function run() {
             res.send(result)
         })
 
-        app.post('/addItem',verifyJWT,verifyAdmin, async (req, res) => {
-            const menu =req.body;
-            const email =req.query.email;
-            const loggedUser =req.decoded.email;
-            if(loggedUser !=email){
-                return res.status(403).send({error:true,message:'forbidden access'})
+        // update item
+        app.put('/updateItem', verifyJWT, verifyAdmin, async (req, res) => {
+            const item = req.body;
+            const id = req.body._id;
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    name: `${item?.name}`,
+                    recipe: `${item?.recipe}`,
+                    image: `${item?.image}`,
+                    category: `${item?.category}`,
+                    price: `${item?.price}`,
+                },
+            };
+            const result = await menuCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
+        // delete menu
+        app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+              const result = await menuCollection.deleteOne(query);
+              res.send(result) 
+          });
+        app.post('/addItem', verifyJWT, verifyAdmin, async (req, res) => {
+            const menu = req.body;
+            const email = req.query.email;
+            const loggedUser = req.decoded.email;
+            if (loggedUser != email) {
+                return res.status(403).send({ error: true, message: 'forbidden access' })
             }
-            const result =await menuCollection.insertOne(menu)
+            const result = await menuCollection.insertOne(menu)
             res.send(result)
         })
 
@@ -218,7 +243,6 @@ async function run() {
         })
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
-            // console.log(price);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: price * 100,
                 currency: 'usd',
@@ -231,6 +255,20 @@ async function run() {
             })
 
         })
+        // update payment status
+        app.put('/updatePayment', verifyJWT, verifyAdmin, async (req, res) => {
+            const {item} = req.body;
+            const id = item._id;
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    status:"Done",
+                },
+            };
+            const result = await paymentCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+        
 
         app.post('/payments', verifyJWT, async (req, res) => {
             const { payments } = req.body;
