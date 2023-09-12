@@ -43,6 +43,7 @@ app.post('/jwt', (req, res) => {
 })
 // mongodb connected
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const e = require('express');
 const uri = "mongodb+srv://bistro-boss:BU5uzfJ4zycGCtqR@cluster0.ovmmvr6.mongodb.net/?retryWrites=true&w=majority";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -60,11 +61,52 @@ async function run() {
         await client.connect();
         // Send a ping to confirm a successful connection
         // database collections
+        const userCollection = client.db("bistro-boss").collection("users");
         const menuCollection = client.db("bistro-boss").collection("menu");
         const reviewCollection = client.db("bistro-boss").collection("reviews");
         const cartCollection = client.db("bistro-boss").collection("carts");
         const bookingCollection = client.db("bistro-boss").collection("bookings");
         const paymentCollection = client.db("bistro-boss").collection("payments");
+
+
+
+
+        // verify Admin
+        function verifyAdmin(req, res, next) {
+            const userEmail = req.decoded.email;
+            const email = req.query.email;
+            if (userEmail != email) {
+                res.status(403).send({ error: true, message: "forbidden access: email not match" })
+            }
+            next()
+        }
+
+        // users apis
+        app.get("/user",verifyJWT, async (req, res) => {
+            const result = await userCollection.find().toArray()
+            res.send(result)
+        })
+        app.delete("/user/:id",verifyJWT, async (req, res) => {
+            const id=req.params.id;
+            const query ={_id:new ObjectId(id)}
+            const result = await userCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        app.post("/users", async (req, res) => {
+            const user = req.body;
+            const userEmail = user?.email;
+            if (!userEmail) {
+                return res.status(400).json({ error: true, message: "Email is required" });
+            }
+            const existingUser = await userCollection.findOne({ email: userEmail });
+            if (existingUser) {
+                return res.status(409).json({ error: true, message: "Email already exists" });
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result)
+        })
+
         // menu related apis
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray()
@@ -130,10 +172,10 @@ async function run() {
             res.send(result);
         })
         // payment related API's:
-        app.get('/payments',  async (req, res) => {
+        app.get('/payments', async (req, res) => {
             const email = req.query.email;
-            const query={email:email}
-            const result =await paymentCollection.find(query).toArray()
+            const query = { email: email }
+            const result = await paymentCollection.find(query).toArray()
             res.send(result)
         })
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
