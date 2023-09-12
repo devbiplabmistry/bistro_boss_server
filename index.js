@@ -77,43 +77,42 @@ async function run() {
             const query = { email: email }
             const user = await userCollection.findOne(query);
             if (user?.roll !== 'Admin') {
-              return res.status(403).send({ error: true, message: 'forbidden message' });
+                return res.status(403).send({ error: true, message: 'forbidden message' });
             }
             next();
-          }
+        }
 
-          app.get('/users/admin/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email; 
+        app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
             if (req.decoded.email !== email) {
-              res.send({ admin: false })
+                res.send({ admin: false })
             }
-      
             const query = { email: email }
             const user = await userCollection.findOne(query);
             const result = { admin: user?.roll === 'Admin' }
             res.send(result);
-          })
+        })
 
         // users apis
-        app.get("/user",verifyJWT,verifyAdmin, async (req, res) => {
+        app.get("/user", verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray()
             res.send(result)
         })
-        app.put("/user/:id",verifyJWT,verifyAdmin, async (req, res) => {
-            const id=req.params.id;
-            const filter = { _id: new ObjectId (id) };
+        app.put("/user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
-                  roll: "Admin"
+                    roll: "Admin"
                 },
-              };
-              const result = await userCollection.updateOne(filter, updateDoc);
-              res.send(result)
+            };
+            const result = await userCollection.updateOne(filter, updateDoc);
+            res.send(result)
 
         })
-        app.delete("/user/:id",verifyJWT,verifyAdmin, async (req, res) => {
-            const id=req.params.id;
-            const query ={_id:new ObjectId(id)}
+        app.delete("/user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
             const result = await userCollection.deleteOne(query)
             res.send(result)
         })
@@ -137,6 +136,20 @@ async function run() {
             const result = await menuCollection.find().toArray()
             res.send(result)
         })
+
+        app.post('/addItem',verifyJWT,verifyAdmin, async (req, res) => {
+            const menu =req.body;
+            const email =req.query.email;
+            const loggedUser =req.decoded.email;
+            if(loggedUser !=email){
+                return res.status(403).send({error:true,message:'forbidden access'})
+            }
+            const result =await menuCollection.insertOne(menu)
+            res.send(result)
+        })
+
+
+
         // reviews related apis
         app.get('/reviews', async (req, res) => {
             const userEmail = req.query.email
