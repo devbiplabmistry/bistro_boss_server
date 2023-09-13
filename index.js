@@ -159,9 +159,9 @@ async function run() {
         app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
-              const result = await menuCollection.deleteOne(query);
-              res.send(result) 
-          });
+            const result = await menuCollection.deleteOne(query);
+            res.send(result)
+        });
         app.post('/addItem', verifyJWT, verifyAdmin, async (req, res) => {
             const menu = req.body;
             const email = req.query.email;
@@ -257,18 +257,74 @@ async function run() {
         })
         // update payment status
         app.put('/updatePayment', verifyJWT, verifyAdmin, async (req, res) => {
-            const {item} = req.body;
+            const { item } = req.body;
             const id = item._id;
             const query = { _id: new ObjectId(id) }
             const updateDoc = {
                 $set: {
-                    status:"Done",
+                    status: "Done",
                 },
             };
             const result = await paymentCollection.updateOne(query, updateDoc)
             res.send(result)
         })
-        
+
+        // pipeline 
+        app.get('/order-stats', async (req, res) => {
+            const pipeline = [
+                {
+                    $lookup: {
+                        from: 'menu',
+                        localField: 'menuCartId',
+                        foreignField: '_id',
+                        as: 'menuItemsData'
+                    }
+                },
+                {
+                    $unwind: '$menuItemsData'
+                },
+                {
+                    $group: {
+                        _id: '$menuItemsData.category',
+                        count: { $sum: 1 },
+                        total: { $sum: '$menuItemsData.price' }
+                    }
+                },
+                {
+                    $project: {
+                        category: '$_id',
+                        count: 1,
+                        total: { $round: ['$total', 2] },
+                        _id: 0
+                    }
+                }
+            ]
+            const result = await paymentCollection.aggregate(pipeline).toArray()
+            res.send(result)
+
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         app.post('/payments', verifyJWT, async (req, res) => {
             const { payments } = req.body;
