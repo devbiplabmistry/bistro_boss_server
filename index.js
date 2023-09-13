@@ -1,5 +1,5 @@
 const express = require('express')
-var cors = require('cors')
+const cors = require('cors')
 require('dotenv').config()
 const app = express()
 const jwt = require('jsonwebtoken');
@@ -8,8 +8,8 @@ const stripe = require("stripe")(payment_token);
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors())
 app.use(express.json());
+app.use(cors())
 
 
 function verifyJWT(req, res, next) {
@@ -33,7 +33,7 @@ function verifyJWT(req, res, next) {
         next();
     });
 }
-app.post('/jwt', (req, res) => {
+app.post('/jwt',verifyJWT, (req, res) => {
     const user = req.body;
     const email = user?.email;
     const token = jwt.sign({
@@ -119,10 +119,8 @@ async function run() {
 
         app.post("/users", async (req, res) => {
             const user = req.body;
+            console.log(user);
             const userEmail = user?.email;
-            if (!userEmail) {
-                return res.status(400).json({ error: true, message: "Email is required" });
-            }
             const existingUser = await userCollection.findOne({ email: userEmail });
             if (existingUser) {
                 return res.status(409).json({ error: true, message: "Email already exists" });
