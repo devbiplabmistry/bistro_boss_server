@@ -41,10 +41,11 @@ app.post('/jwt', (req, res) => {
     }, process.env.SECRET_TOKEN, { expiresIn: '2h' });
     res.send({ token })
 })
+
 // mongodb connected
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const e = require('express');
-const uri = "mongodb+srv://bistro-boss:BU5uzfJ4zycGCtqR@cluster0.ovmmvr6.mongodb.net/?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ovmmvr6.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -58,7 +59,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+         client.connect();
         // Send a ping to confirm a successful connection
         // database collections
         const userCollection = client.db("bistro-boss").collection("users");
@@ -239,7 +240,7 @@ async function run() {
             const result = await paymentCollection.find().toArray()
             res.send(result)
         })
-        app.get('/payment', async (req, res) => {
+        app.get('/payment',verifyJWT, async (req, res) => {
             const email = req.query.email;
             const query = { email: email }
             const result = await paymentCollection.find(query).toArray()
